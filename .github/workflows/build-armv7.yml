@@ -28,42 +28,37 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > TMessagesProj/release.keystore
 
-      - name: Patch existing flavor to armeabi-v7a only
+      - name: Patch abiFilters to armeabi-v7a only
         run: |
           python3 - << 'EOF'
+          import re
           with open('TMessagesProj/build.gradle', 'r') as f:
               content = f.read()
-
-          import re
-
-          # Replace all abiFilters lines to only keep armeabi-v7a
           content = re.sub(
               r'abiFilters\s+"armeabi-v7a",\s*"arm64-v8a"(?:,\s*"x86")?(?:,\s*"x86_64")?',
               'abiFilters "armeabi-v7a"',
               content
           )
-
           with open('TMessagesProj/build.gradle', 'w') as f:
               f.write(content)
-
-          print("Patched all abiFilters to armeabi-v7a only")
+          print("Patched successfully")
           EOF
 
-      - name: List assemble tasks
+      - name: List available assemble tasks
         run: |
           chmod +x gradlew
-          ./gradlew tasks --all 2>/dev/null | grep -i assemble | grep -iv "test\|lint" || true
+          ./gradlew tasks --all 2>/dev/null | grep -i "assemble" | grep -iv "test\|lint" || true
 
       - name: Build
         run: |
           ./gradlew assembleAfatRelease \
             -Dorg.gradle.jvmargs="-Xmx4g" \
             --stacktrace
-      
+
       - name: Find APK
         id: apk
         run: |
-          APK=$(find . -name "*.apk" | grep -i "armeabi_v7a" | grep -i "release" | head -1)
+          APK=$(find . -name "*.apk" | grep -i "release" | head -1)
           echo "Found: $APK"
           echo "path=$APK" >> $GITHUB_OUTPUT
 
