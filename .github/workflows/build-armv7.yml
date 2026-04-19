@@ -51,14 +51,14 @@ jobs:
 
       - name: Build
         run: |
-          ./gradlew assembleAfatRelease \
+          ./gradlew :TMessagesProj:assembleRelease \
             -Dorg.gradle.jvmargs="-Xmx4g" \
             --stacktrace
 
       - name: Find APK
         id: apk
         run: |
-          APK=$(find . -name "*.apk" | grep -i "release" | head -1)
+          APK=$(find . -name "*.apk" | grep -i "release" | grep -iv "unsigned" | head -1)
           echo "Found: $APK"
           echo "path=$APK" >> $GITHUB_OUTPUT
 
