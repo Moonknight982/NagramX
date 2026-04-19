@@ -28,49 +28,38 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > TMessagesProj/release.keystore
 
-      - name: Inject armeabi-v7a product flavor
+      - name: Patch existing flavor to armeabi-v7a only
         run: |
           python3 - << 'EOF'
           with open('TMessagesProj/build.gradle', 'r') as f:
               content = f.read()
 
-          # Find the dimension name used in this build.gradle
           import re
-          match = re.search(r'flavorDimensions\s+["\'](\w+)["\']', content)
-          dimension = match.group(1) if match else 'minApi'
-          print(f"Found dimension: {dimension}")
 
-          flavor = f'''
-              armeabi_v7a {{
-                  dimension "{dimension}"
-                  ndk {{
-                      abiFilters "armeabi-v7a"
-                  }}
-                  ext {{
-                      abiVersionCode = 3
-                  }}
-              }}
-          '''
+          # Replace all abiFilters lines to only keep armeabi-v7a
+          content = re.sub(
+              r'abiFilters\s+"armeabi-v7a",\s*"arm64-v8a"(?:,\s*"x86")?(?:,\s*"x86_64")?',
+              'abiFilters "armeabi-v7a"',
+              content
+          )
 
-          if 'armeabi_v7a' in content:
-              print("Flavor already exists, skipping patch")
-          else:
-              content = content.replace('productFlavors {', 'productFlavors {' + flavor, 1)
-              with open('TMessagesProj/build.gradle', 'w') as f:
-                  f.write(content)
-              print("Patched successfully")
+          with open('TMessagesProj/build.gradle', 'w') as f:
+              f.write(content)
+
+          print("Patched all abiFilters to armeabi-v7a only")
           EOF
 
-      - name: List available assemble tasks
-        run: ./gradlew tasks --all 2>/dev/null | grep -i "assemble" | grep -i "armeabi\|armv7\|arm" || true
+      - name: List assemble tasks
+        run: |
+          chmod +x gradlew
+          ./gradlew tasks --all 2>/dev/null | grep -i assemble | grep -iv "test\|lint" || true
 
       - name: Build
         run: |
-          chmod +x gradlew
-          ./gradlew assembleArmeabi_v7aRelease \
+          ./gradlew assembleAfatRelease \
             -Dorg.gradle.jvmargs="-Xmx4g" \
             --stacktrace
-
+      
       - name: Find APK
         id: apk
         run: |
