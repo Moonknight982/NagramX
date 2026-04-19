@@ -34,15 +34,22 @@ jobs:
           with open('TMessagesProj/build.gradle', 'r') as f:
               content = f.read()
 
-          flavor = '''
-              armeabi_v7a {
-                  ndk {
+          # Find the dimension name used in this build.gradle
+          import re
+          match = re.search(r'flavorDimensions\s+["\'](\w+)["\']', content)
+          dimension = match.group(1) if match else 'minApi'
+          print(f"Found dimension: {dimension}")
+
+          flavor = f'''
+              armeabi_v7a {{
+                  dimension "{dimension}"
+                  ndk {{
                       abiFilters "armeabi-v7a"
-                  }
-                  ext {
+                  }}
+                  ext {{
                       abiVersionCode = 3
-                  }
-              }
+                  }}
+              }}
           '''
 
           if 'armeabi_v7a' in content:
@@ -53,6 +60,9 @@ jobs:
                   f.write(content)
               print("Patched successfully")
           EOF
+
+      - name: List available assemble tasks
+        run: ./gradlew tasks --all 2>/dev/null | grep -i "assemble" | grep -i "armeabi\|armv7\|arm" || true
 
       - name: Build
         run: |
