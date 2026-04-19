@@ -22,38 +22,42 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Decode local.properties
-        run: echo "${{ secrets.LOCAL_PROPERTIES }}" | base64 -d > local.properties
-
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > TMessagesProj/release.keystore
 
-      - name: Patch abiFilters to armeabi-v7a only
+      - name: Patch ABI splits to armeabi-v7a only
         run: |
           python3 - << 'EOF'
           import re
           with open('TMessagesProj/build.gradle', 'r') as f:
               content = f.read()
+
           content = re.sub(
-              r'abiFilters\s+"armeabi-v7a",\s*"arm64-v8a"(?:,\s*"x86")?(?:,\s*"x86_64")?',
-              'abiFilters "armeabi-v7a"',
+              r"include 'arm64-v8a',\s*'x86_64'",
+              "include 'armeabi-v7a'",
               content
           )
+
           with open('TMessagesProj/build.gradle', 'w') as f:
               f.write(content)
-          print("Patched successfully")
-          EOF
 
-      - name: List available assemble tasks
-        run: |
-          chmod +x gradlew
-          ./gradlew tasks --all 2>/dev/null | grep -i "assemble" | grep -iv "test\|lint" || true
+          # Verify patch worked
+          with open('TMessagesProj/build.gradle', 'r') as f:
+              verify = f.read()
+          if "include 'armeabi-v7a'" in verify:
+              print("Patch successful")
+          else:
+              print("WARNING: Patch may have failed!")
+          EOF
 
       - name: Build
         run: |
+          chmod +x gradlew
           ./gradlew :TMessagesProj:assembleRelease \
             -Dorg.gradle.jvmargs="-Xmx4g" \
             --stacktrace
+        env:
+          LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
 
       - name: Find APK
         id: apk
