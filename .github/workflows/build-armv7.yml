@@ -16,10 +16,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Decode keystore
@@ -50,6 +50,10 @@ jobs:
               print("WARNING: Patch may have failed!")
           EOF
 
+      - name: Bypass broken JetBrains Toolchain
+        run: |
+          find . -type f \( -name "build.gradle.kts" -o -name "build.gradle" \) -exec sed -i '/JvmVendorSpec\.JETBRAINS/d' {} +
+            
       - name: Build
         run: |
           chmod +x gradlew
