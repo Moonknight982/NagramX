@@ -2,12 +2,42 @@ name: Build ARMv7
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'  # check upstream every 6 hours
 
 permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      upstream_tag: ${{ steps.check.outputs.upstream_tag }}
+    steps:
+      - name: Check upstream vs fork releases
+        id: check
+        run: |
+          UPSTREAM=$(curl -s https://api.github.com/repos/NextAlone/NagramX/releases/latest \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+
+          MY=$(curl -s https://api.github.com/repos/Moonknight982/NagramX/releases/latest \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('tag_name','none'))" 2>/dev/null || echo "none")
+
+          echo "Upstream: $UPSTREAM | Mine: $MY"
+          echo "upstream_tag=$UPSTREAM" >> $GITHUB_OUTPUT
+
+          if [[ "$MY" == *"$UPSTREAM"* ]]; then
+            echo "Already up to date. Skipping build."
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "New upstream release detected. Triggering build."
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -41,19 +71,27 @@ jobs:
           with open('TMessagesProj/build.gradle', 'w') as f:
               f.write(content)
 
-          # Verify patch worked
           with open('TMessagesProj/build.gradle', 'r') as f:
               verify = f.read()
           if "include 'armeabi-v7a'" in verify:
-              print("Patch successful")
+              print("ABI patch successful")
           else:
-              print("WARNING: Patch may have failed!")
+              print("WARNING: ABI patch may have failed!")
           EOF
+
+      - name: Patch update URL to point to fork
+        run: |
+          grep -r "NextAlone/NagramX" TMessagesProj/src --include="*.java" --include="*.kt" -l
+          find TMessagesProj/src -type f \( -name "*.java" -o -name "*.kt" \) \
+            -exec sed -i 's|NextAlone/NagramX|Moonknight982/NagramX|g' {} +
+          echo "Update URL patch done. Verifying..."
+          grep -r "Moonknight982/NagramX" TMessagesProj/src --include="*.java" --include="*.kt" -l || echo "WARNING: No matches found — check URL manually"
 
       - name: Bypass broken JetBrains Toolchain
         run: |
-          find . -type f \( -name "build.gradle.kts" -o -name "build.gradle" \) -exec sed -i '/JvmVendorSpec\.JETBRAINS/d' {} +
-            
+          find . -type f \( -name "build.gradle.kts" -o -name "build.gradle" \) \
+            -exec sed -i '/JvmVendorSpec\.JETBRAINS/d' {} +
+
       - name: Build
         run: |
           chmod +x gradlew
@@ -70,9 +108,33 @@ jobs:
           echo "Found: $APK"
           echo "path=$APK" >> $GITHUB_OUTPUT
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Get version name
+        id: version
+        run: |
+          VERSION=$(grep -oP 'versionName\s+"\K[^"]+' TMessagesProj/build.gradle | head -1)
+          UPSTREAM_TAG="${{ needs.check.outputs.upstream_tag }}"
+
+          # Fallback: if upstream_tag is empty (manual trigger), use version from gradle
+          if [ -z "$UPSTREAM_TAG" ]; then
+            TAG="v${VERSION}-armv7"
+          else
+            TAG="${UPSTREAM_TAG}-armv7"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION | Tag: $TAG"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: NagramX-armeabi-v7a
-          path: ${{ steps.apk.outputs.path }}
-          retention-days: 7
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "NagramX ${{ steps.version.outputs.version }} (armeabi-v7a)"
+          body: |
+            ARMv7 build of NagramX ${{ steps.version.outputs.version }}
+            Built from upstream tag: ${{ needs.check.outputs.upstream_tag }}
+          files: ${{ steps.apk.outputs.path }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
