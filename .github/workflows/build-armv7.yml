@@ -18,11 +18,28 @@ jobs:
       - name: Check upstream vs fork releases
         id: check
         run: |
-          UPSTREAM=$(curl -s https://api.github.com/repos/NextAlone/NagramX/releases/latest \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+          UPSTREAM_JSON=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/NextAlone/NagramX/releases/latest)
 
-          MY=$(curl -s https://api.github.com/repos/Moonknight982/NagramX/releases/latest \
-            | python3 -c "import sys,json; print(json.load(sys.stdin).get('tag_name','none'))" 2>/dev/null || echo "none")
+          echo "Upstream response: $UPSTREAM_JSON" | head -c 300
+
+          UPSTREAM=$(echo "$UPSTREAM_JSON" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          if 'tag_name' not in d:
+              print('ERROR: ' + d.get('message', 'unknown'), file=sys.stderr)
+              sys.exit(1)
+          print(d['tag_name'])
+          ")
+
+          MY_JSON=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/Moonknight982/NagramX/releases/latest)
+
+          MY=$(echo "$MY_JSON" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          print(d.get('tag_name', 'none'))
+          " 2>/dev/null || echo "none")
 
           echo "Upstream: $UPSTREAM | Mine: $MY"
           echo "upstream_tag=$UPSTREAM" >> $GITHUB_OUTPUT
