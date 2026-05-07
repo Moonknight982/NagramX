@@ -76,7 +76,13 @@ jobs:
           echo "=== Verify ==="
           grep -r "Moonknight982" TMessagesProj/src --include="*.java" \
             --include="*.kt" --include="*.json" --include="*.xml" -rl || echo "Still not found — see search results above"
-
+      
+      - name: Inspect CloudStorageHelper update URL
+        run: |
+          grep -n "NextAlone\|NagramX\|Moonknight982\|github\|update\|release\|http" \
+            TMessagesProj/src/main/java/tw/nekomimi/nekogram/helpers/CloudStorageHelper.java \
+            | head -40
+      
       - name: Bypass broken JetBrains Toolchain
         run: |
           find . -type f \( -name "build.gradle.kts" -o -name "build.gradle" \) \
