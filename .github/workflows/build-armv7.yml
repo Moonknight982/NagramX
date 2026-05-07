@@ -2,8 +2,6 @@ name: Build ARMv7
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 */6 * * *'  # check upstream every 6 hours
 
 permissions:
   contents: write
@@ -51,38 +49,12 @@ jobs:
               print("WARNING: ABI patch may have failed!")
           EOF
 
-      - name: Patch update URL to point to fork
+      - name: Disable upstream update checker
         run: |
-          echo "=== Searching for NextAlone references ==="
-          grep -r "NextAlone" TMessagesProj/src --include="*.java" --include="*.kt" \
-            --include="*.json" --include="*.xml" --include="*.gradle" -rl || true
+          sed -i 's|NextAloneBot|DisabledBot|g' \
+            TMessagesProj/src/main/java/tw/nekomimi/nekogram/helpers/CloudStorageHelper.java
+          echo "Update checker disabled"
 
-          echo "=== Searching for update/github URL patterns ==="
-          grep -r "github" TMessagesProj/src -rl \
-            --include="*.java" --include="*.kt" --include="*.json" --include="*.xml" || true
-
-          echo "=== Searching in root-level gradle files ==="
-          grep -r "NextAlone" . --include="*.gradle" --include="*.kts" -rl || true
-
-          echo "=== Now patching all occurrences ==="
-          find TMessagesProj/src . \( -name "*.java" -o -name "*.kt" \
-            -o -name "*.json" -o -name "*.xml" -o -name "*.gradle" -o -name "*.kts" \) \
-            -exec sed -i 's|NextAlone/NagramX|Moonknight982/NagramX|g' {} + 2>/dev/null || true
-
-          find TMessagesProj/src . \( -name "*.java" -o -name "*.kt" \
-            -o -name "*.json" -o -name "*.xml" -o -name "*.gradle" -o -name "*.kts" \) \
-            -exec sed -i 's|NextAlone|Moonknight982|g' {} + 2>/dev/null || true
-
-          echo "=== Verify ==="
-          grep -r "Moonknight982" TMessagesProj/src --include="*.java" \
-            --include="*.kt" --include="*.json" --include="*.xml" -rl || echo "Still not found — see search results above"
-      
-      - name: Inspect CloudStorageHelper update URL
-        run: |
-          grep -n "NextAlone\|NagramX\|Moonknight982\|github\|update\|release\|http" \
-            TMessagesProj/src/main/java/tw/nekomimi/nekogram/helpers/CloudStorageHelper.java \
-            | head -40
-      
       - name: Bypass broken JetBrains Toolchain
         run: |
           find . -type f \( -name "build.gradle.kts" -o -name "build.gradle" \) \
@@ -108,15 +80,7 @@ jobs:
         id: version
         run: |
           VERSION=$(grep -oP 'versionName\s+"\K[^"]+' TMessagesProj/build.gradle | head -1)
-          UPSTREAM_TAG="${{ needs.check.outputs.upstream_tag }}"
-
-          # Fallback: if upstream_tag is empty (manual trigger), use version from gradle
-          if [ -z "$UPSTREAM_TAG" ]; then
-            TAG="v${VERSION}-armv7"
-          else
-            TAG="${UPSTREAM_TAG}-armv7"
-          fi
-
+          TAG="v${VERSION}-armv7"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Version: $VERSION | Tag: $TAG"
@@ -128,7 +92,7 @@ jobs:
           name: "NagramX ${{ steps.version.outputs.version }} (armeabi-v7a)"
           body: |
             ARMv7 build of NagramX ${{ steps.version.outputs.version }}
-            Built from upstream tag: ${{ needs.check.outputs.upstream_tag }}
+            Repo: https://github.com/anZxKr/NagramX
           files: ${{ steps.apk.outputs.path }}
           draft: false
           prerelease: false
