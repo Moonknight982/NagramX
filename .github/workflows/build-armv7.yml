@@ -80,7 +80,7 @@ jobs:
         id: version
         run: |
           VERSION=$(grep -oP 'versionName\s+"\K[^"]+' TMessagesProj/build.gradle | head -1)
-          TAG="v${VERSION}-armv7"
+          TAG="v${VERSION}-armv7-${{ github.run_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Version: $VERSION | Tag: $TAG"
