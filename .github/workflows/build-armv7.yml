@@ -1,7 +1,8 @@
 name: Build ARMv7
 
 on:
-  workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -76,25 +77,10 @@ jobs:
           echo "Found: $APK"
           echo "path=$APK" >> $GITHUB_OUTPUT
 
-      - name: Get version name
-        id: version
-        run: |
-          VERSION=$(grep -oP 'versionName\s+"\K[^"]+' TMessagesProj/build.gradle | head -1)
-          TAG="v${VERSION}-armv7-${{ github.run_number }}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION | Tag: $TAG"
-
-      - name: Create GitHub Release
+      - name: Upload APK to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: "NagramX ${{ steps.version.outputs.version }} (armeabi-v7a)"
-          body: |
-            ARMv7 build of NagramX ${{ steps.version.outputs.version }}
-            Repo: https://github.com/anZxKr/NagramX
+          tag_name: ${{ github.event.release.tag_name }}
           files: ${{ steps.apk.outputs.path }}
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
