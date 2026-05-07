@@ -53,11 +53,29 @@ jobs:
 
       - name: Patch update URL to point to fork
         run: |
-          grep -r "NextAlone/NagramX" TMessagesProj/src --include="*.java" --include="*.kt" -l
-          find TMessagesProj/src -type f \( -name "*.java" -o -name "*.kt" \) \
-            -exec sed -i 's|NextAlone/NagramX|Moonknight982/NagramX|g' {} +
-          echo "Update URL patch done. Verifying..."
-          grep -r "Moonknight982/NagramX" TMessagesProj/src --include="*.java" --include="*.kt" -l || echo "WARNING: No matches found — check URL manually"
+          echo "=== Searching for NextAlone references ==="
+          grep -r "NextAlone" TMessagesProj/src --include="*.java" --include="*.kt" \
+            --include="*.json" --include="*.xml" --include="*.gradle" -rl || true
+
+          echo "=== Searching for update/github URL patterns ==="
+          grep -r "github" TMessagesProj/src -rl \
+            --include="*.java" --include="*.kt" --include="*.json" --include="*.xml" || true
+
+          echo "=== Searching in root-level gradle files ==="
+          grep -r "NextAlone" . --include="*.gradle" --include="*.kts" -rl || true
+
+          echo "=== Now patching all occurrences ==="
+          find TMessagesProj/src . \( -name "*.java" -o -name "*.kt" \
+            -o -name "*.json" -o -name "*.xml" -o -name "*.gradle" -o -name "*.kts" \) \
+            -exec sed -i 's|NextAlone/NagramX|Moonknight982/NagramX|g' {} + 2>/dev/null || true
+
+          find TMessagesProj/src . \( -name "*.java" -o -name "*.kt" \
+            -o -name "*.json" -o -name "*.xml" -o -name "*.gradle" -o -name "*.kts" \) \
+            -exec sed -i 's|NextAlone|Moonknight982|g' {} + 2>/dev/null || true
+
+          echo "=== Verify ==="
+          grep -r "Moonknight982" TMessagesProj/src --include="*.java" \
+            --include="*.kt" --include="*.json" --include="*.xml" -rl || echo "Still not found — see search results above"
 
       - name: Bypass broken JetBrains Toolchain
         run: |
