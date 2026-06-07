@@ -49,7 +49,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -966,9 +965,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         zoomControlView.setTranslationY(zoomControlCenterY);
     }
 
-    public Rect getCameraRect() {
+    public RectOld getCameraRect() {
         cameraContainer.getLocationOnScreen(position);
-        return new Rect(position[0], position[1], cameraContainer.getWidth(), cameraContainer.getHeight());
+        return new RectOld(position[0], position[1], cameraContainer.getWidth(), cameraContainer.getHeight());
     }
 
     public void changeVideoPreviewState(int state, float progress) {
@@ -1826,11 +1825,12 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
             }
 
             boolean captureFirstFrameThumb = false;
+            VideoRecorder recorder = videoEncoder;
             if (!recording) {
-                if (videoEncoder == null) {
-                    videoEncoder = new VideoRecorder();
+                if (recorder == null) {
+                    recorder = videoEncoder = new VideoRecorder();
                 }
-                if (videoEncoder.started) {
+                if (recorder.started) {
                     if (!cameraReady) {
                         cameraReady = true;
                         AndroidUtilities.runOnUIThread(() -> textureOverlayView.animate().setDuration(120).alpha(0.0f).setInterpolator(new DecelerateInterpolator()).start());
@@ -1838,7 +1838,7 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 } else {
                     captureFirstFrameThumb = true;
                 }
-                videoEncoder.startRecording(cameraFile, EGL14.eglGetCurrentContext());
+                recorder.startRecording(cameraFile, EGL14.eglGetCurrentContext());
                 int orientation;
                 if (currentSession instanceof CameraSession) {
                     orientation = ((CameraSession) currentSession).getCurrentOrientation();
@@ -1856,8 +1856,8 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 updateFlash();
             }
 
-            if (videoEncoder != null && (surfaceIndex == 0 && updateTexImage1 || surfaceIndex == 1 && updateTexImage2)) {
-                videoEncoder.frameAvailable(cameraSurface[surfaceIndex], bothCameras ? surfaceIndex : cameraId, System.nanoTime());
+            if (recorder != null && (surfaceIndex == 0 && updateTexImage1 || surfaceIndex == 1 && updateTexImage2)) {
+                recorder.frameAvailable(cameraSurface[surfaceIndex], bothCameras ? surfaceIndex : cameraId, System.nanoTime());
             }
 
             cameraSurface[surfaceIndex].getTransformMatrix(mSTMatrix);
@@ -2386,9 +2386,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
 
             keyframeThumbs.clear();
             frameCount = 0;
-            if (generateKeyframeThumbsQueue != null) {
-                generateKeyframeThumbsQueue.cleanupQueue();
-                generateKeyframeThumbsQueue.recycle();
+            DispatchQueue queue = generateKeyframeThumbsQueue;
+            if (queue != null) {
+                queue.cleanupQueue();
+                queue.recycle();
             }
             generateKeyframeThumbsQueue = new DispatchQueue("keyframes_thumb_queue");
             handler.sendMessage(handler.obtainMessage(MSG_START_RECORDING));
@@ -2733,9 +2734,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
         }
 
         private void createKeyframeThumb() {
-            if (generateKeyframeThumbsQueue != null && SharedConfig.getDevicePerformanceClass() == SharedConfig.PERFORMANCE_CLASS_HIGH && frameCount % 33 == 0) {
+            DispatchQueue queue = generateKeyframeThumbsQueue;
+            if (queue != null && SharedConfig.getDevicePerformanceClass() == SharedConfig.PERFORMANCE_CLASS_HIGH && frameCount % 33 == 0) {
                 GenerateKeyframeThumbTask task = new GenerateKeyframeThumbTask();
-                generateKeyframeThumbsQueue.postRunnable(task);
+                queue.postRunnable(task);
             }
         }
 
@@ -3038,9 +3040,10 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 }
             }
             if (send != 2) {
-                if (generateKeyframeThumbsQueue != null) {
-                    generateKeyframeThumbsQueue.cleanupQueue();
-                    generateKeyframeThumbsQueue.recycle();
+                DispatchQueue queue = generateKeyframeThumbsQueue;
+                if (queue != null) {
+                    queue.cleanupQueue();
+                    queue.recycle();
                     generateKeyframeThumbsQueue = null;
                 }
             }
@@ -3151,7 +3154,9 @@ public class InstantCameraView extends FrameLayout implements NotificationCenter
                 overlayHelper = null;
             }
             AndroidUtilities.runOnUIThread(() -> {
-                InstantCameraView.this.videoEncoder = null;
+                if (InstantCameraView.this.videoEncoder == this) {
+                    InstantCameraView.this.videoEncoder = null;
+                }
             });
         }
 

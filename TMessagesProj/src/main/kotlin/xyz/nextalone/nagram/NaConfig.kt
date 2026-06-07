@@ -1247,6 +1247,12 @@ object NaConfig {
             ConfigItem.configTypeInt,
             NekoConfig.MARKDOWN_PARSER_NEKO
         )
+    val defaultScheduledTime =
+        addConfig(
+            "DefaultScheduledTime",
+            ConfigItem.configTypeInt,
+            10
+        )
     val keepTranslatorPreferences =
         addConfig(
             "KeepTranslatorPreferences",
@@ -1379,6 +1385,12 @@ object NaConfig {
             ConfigItem.configTypeBool,
             false
         )
+    val deepLTranslateKey =
+        addConfig(
+            "DeepLTranslateKey",
+            ConfigItem.configTypeString,
+            ""
+        )
 
     val preferredTranslateTargetLangList = ArrayList<String>()
     fun updatePreferredTranslateTargetLangList() {
@@ -1448,6 +1460,9 @@ object NaConfig {
                 backAnimationStyle.setConfigInt(1) // SPRING
             }
             getPreferences().edit { remove("SpringAnimation") }
+        }
+        if (!getPreferences().contains(strokeOnViews.key)) {
+            strokeOnViews.changed(SharedConfig.getDevicePerformanceClass() != SharedConfig.PERFORMANCE_CLASS_LOW)
         }
 
         val mainPreferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Context.MODE_PRIVATE)
