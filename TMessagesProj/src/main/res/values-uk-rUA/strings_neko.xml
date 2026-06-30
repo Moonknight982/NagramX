@@ -71,7 +71,7 @@
     <string name="DisableNumberRounding">Не округлювати числа</string>
     <string name="Categories">Категорії</string>
     <string name="OfficialChannel">Канал Nagram</string>
-    <string name="About">Про проєкт</string>
+    <string name="About">Про додаток</string>
     <string name="IgnoreBlockedAbout">Ви більше не бачитимете повідомлення від заблокованих користувачів.</string>
     <string name="SourceCode">Вихідний код</string>
     <string name="ResetStickerSize">Скинути розмір наліпки</string>
@@ -103,8 +103,6 @@
     <string name="customSavePath">Шлях зберігання завантажень</string>
     <string name="customSavePathHint">Залишити пустим для завантаження безпосередньо в \"Завантаження\"</string>
     <string name="channelLabel">канал</string>
-    <string name="forceBlurInChat">Примусове розмиття чатів</string>
-    <string name="ChatBlurAlphaValue">Розмиття чатів (Альфа)</string>
     <string name="MutualContact">Взаємний контакт</string>
     <string name="MutualContactDescription">Цей контакт є взаємним контактом.</string>
     <string name="DatacenterStatusAbout">Перевірте стан **дата-центрів** Telegram.</string>
@@ -204,7 +202,6 @@
     <string name="AddProxySocks5">Додати проксі SOCKS5</string>
     <string name="AddProxyTelegram">Додати MTProto проксі</string>
     <string name="RetestPing">Повторно перевірити ping для всіх серверів</string>
-    <string name="ImportProxyList">Імпортувати проксі-сервери</string>
     <string name="ExportStickers">Експорт наліпок</string>
     <string name="ImportStickersX">Імпорт наліпок з файлу</string>
     <string name="ImportStickersList">Імпорт наліпок</string>
